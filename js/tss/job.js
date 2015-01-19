@@ -76,20 +76,33 @@ PriorityQueue.prototype = {
     }
 };
 
+function Edge(src, dest, cost) {
+    this.src = src;
+    this.dest = dest;
+    this.cost = cost;
+}
 
-function Job(arrivalTime, executionTime, id, deps) {
+function Job(executionTime, id) {
     this.id = id;
-    this.arrivalTime = arrivalTime;
     this.startTime = -1;
     this.executionTime = executionTime;
     this.elapsedTime = 0;
     this.finished = false;
     this.running = false;
-    this.deps = deps;
+    this.succ = [];
+    this.pred = [];
 }
 
 Job.prototype.remainingTime = function() {
     return this.executionTime - this.elapsedTime;
+};
+
+Job.prototype.addDep = function (job, cost) {
+    if (job === null)
+        return;
+    var edge = new Edge(this, job, cost);
+    job.succ.push(edge);
+    this.pred.push(edge);
 };
 
 function Node(id) {
@@ -112,7 +125,7 @@ function TSS(nodes, mode) {
     this.mode = mode ? mode : 'static';
     var i;
     for (i = 0; i < nodes; ++i) {
-        nodes.push(new Node(i));
+        this.nodes.push(new Node(i));
     }
 }
 
@@ -144,18 +157,29 @@ TSS.prototype.runScheduler = function(jobs) {
     this.scheduler(jobs, this.nodes, this.launchJobOnNode.bind(this), this.time, new PriorityQueue());
 };
 
-TSS.prototype.generateRandomJobs = function(count, arrivalTime) {
-    var i = 0;
-    var aTime;
+TSS.prototype.generateRandomJobs = function(count) {
+    var i;
+    var job;
+    var l;
+    var j;
+
     function getRandomInt(min, max) {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
-    for (i = 0; i < count; ++i) {
-        if (arrivalTime)
-            aTime = arrivalTime;
-        else
-            aTime = Math.random();
 
+    function getRandomElement(a) {
+        if (a.length === 0)
+            return null;
+        return a[getRandomInt(0, a.length-1)];
+    }
+
+    for (i = 0; i < count; ++i) {
+        job = new Job(getRandomInt(1, 10), i);
+        l = getRandomInt(1, Math.min(10, this.jobs.length));
+        for (j = 0; j < l; ++j) {
+            job.addDep(getRandomElement(this.jobs));
+        }
+        this.jobs.push(job);
     }
 };
 
