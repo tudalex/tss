@@ -100,7 +100,7 @@ function Job(executionTime, id) {
 Job.prototype.addDep = function (job, cost) {
     if (job === null)
         return;
-    var edge = new Edge(this, job, cost);
+    var edge = new Edge(job, this, cost);
     job.succ.push(edge);
     this.pred.push(edge);
     this.remDeps += 1;
@@ -112,7 +112,7 @@ Job.prototype.vizRow = function() {
         'Processing element '+this.nodeId,
         this.id.toString(),
         this.startTime * amplitude,
-        (this.startTime + this.executionTime) *amplitude
+        (this.startTime + this.executionTime) * amplitude
     ];
 };
 
@@ -158,15 +158,22 @@ function TSS(nodes, mode) {
 //};
 
 TSS.prototype.launchJobOnNode = function(node, job, startTime) {
+    var i, djob, cost;
     if (job.remDeps != 0)
         throw new Error('Not all dependencies are scheduled.');
     if (node.finish > startTime)
         throw new Error('Node is already processing.');
+    for (i = 0; i < job.pred; ++i) {
+        djob = job.pred[i].src;
+        cost = djob.nodeId === node.id ? 0 : job.pred[i].cost;
+        if (djob.startTime + djob.executionTime + cost > startTime)
+            throw  new Error('Job started before deps finished.');
+    }
 
     job.startTime = startTime;
     job.nodeId = node.id;
     node.finish  = startTime + job.executionTime;
-    var i;
+
     for (i = 0; i < job.succ.length; ++i) {
         job.succ[i].remDeps -= 1;
     }
@@ -218,7 +225,7 @@ TSS.prototype.generateRandomJobs = function(count) {
 
 TSS.prototype.run = function() {
     this.runScheduler(this.jobs);
-    this.verify();
+    //this.verify();
     return;
 };
 
@@ -230,11 +237,7 @@ TSS.prototype.reset = function() {
         nodes[i].reset();
 };
 
-TSS.prototype.verify = function() {
-    for (i = 0; i < this.jobs.length; ++i) {
 
-    }
-};
 
 
 
