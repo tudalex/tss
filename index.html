@@ -14,7 +14,11 @@
 <body>
 
     <textarea id="editor" width="100%">
+        var i;
 
+        for (i = 0; i < jobs.length; ++i) {
+            launchJobOnNode(nodes[i%nodes.length], jobs[i], i*10);
+        }
     </textarea>
     <script>
         "use strict";
