@@ -195,14 +195,14 @@ TSS.prototype.generateRandomJobs = function(count) {
     }
 };
 
-TSS.prototype.finishedAllJobs = function() {
-    //TODO: Optimize this with a counter
-    var i = 0;
-    for (i = 0; i < this.jobs.length; ++i)
-        if (jobs[i].finished === false)
-            return false;
-    return true;
-};
+//TSS.prototype.finishedAllJobs = function() {
+//    //TODO: Optimize this with a counter
+//    var i = 0;
+//    for (i = 0; i < this.jobs.length; ++i)
+//        if (jobs[i].finished === false)
+//            return false;
+//    return true;
+//};
 
 TSS.prototype.run = function() {
     if (this.mode === 'static') {
