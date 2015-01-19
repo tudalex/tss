@@ -3,32 +3,31 @@
  */
 "use strict";
 // Priority queue implementation from http://jsfiddle.net/GRIFFnDOOR/r7tvg/
-function Event (data, priority) {
-    this.data = data;
-    this.priority = priority;
-}
-Event.prototype.toString = function(){return this.priority};
+
 
 // takes an array of objects with {data, priority}
-function PriorityQueue (arr) {
+function PriorityQueue (arr, comparator) {
     this.heap = [null];
-    if (arr) for (i=0; i< arr.length; i++)
-        this.push(arr[i].data, arr[i].priority);
+    if (arr) for (var i=0; i< arr.length; i++)
+        this.push(arr[i]);
 }
 
 PriorityQueue.prototype = {
-    push: function (data, priority) {
-        var node = new Event(data, priority);
-        this.bubble(this.heap.push(node) - 1);
+    push: function(node) {
+        var idx = this.heap.push(node) - 1;
+        node.idx = idx;
+        this.bubble(idx);
+    },
+
+    isEmpty: function() {
+        return this.heap.length > 1;
     },
 
     // removes and returns the data of highest priority
     pop: function () {
-        var topVal = this.heap[1].data;
-        this.heap[1] = this.heap.pop();
-        this.sink(1);
-        return topVal;
+        return this.remove(1);
     },
+
     peek: function() {
         var topVal = this.heap[1].data;
         return topVal;
@@ -63,16 +62,28 @@ PriorityQueue.prototype = {
         }
     },
 
+    remove: function(i) {
+        var e = this.heap[i];
+        this.swap(i, this.heap.length-1);
+        this.sink(i);
+        e.idx = -1;
+        return e;
+    },
+
     // swaps the addresses of 2 nodes
     swap: function (i, j) {
         var temp = this.heap[i];
         this.heap[i] = this.heap[j];
         this.heap[j] = temp;
+
+        var tempIdx = this.heap[i].idx;
+        this.heap[i].idx = this.heap[j].idx;
+        this.heap[j].idx = tempIdx;
     },
 
     // returns true if node i is higher priority than j
     isHigherPriority: function (i, j) {
-        return this.heap[i].priority < this.heap[j].priority;
+        return this.heap[i].compareTo(this.heap[j]);
     }
 };
 
