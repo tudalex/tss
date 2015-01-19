@@ -29,6 +29,10 @@ PriorityQueue.prototype = {
         this.sink(1);
         return topVal;
     },
+    peek: function() {
+        var topVal = this.heap[1].data;
+        return topVal;
+    },
 
     // bubbles node i up the binary tree based on
     // priority until heap conditions are restored
@@ -91,14 +95,21 @@ Job.prototype.remainingTime = function() {
 function Node(id) {
     this.job = undefined;
     this.id = id;
-
+    this.jobs_list = [];
+    this.queueTime = 0;
 }
+
+Node.prototype.enqueueJob = function (job) {
+    this.jobs_list.push(job);
+    this.queueTime += job.executionTime;
+};
 
 function TSS(nodes, mode) {
     this.time = 0;
     this.jobs = [];
     this.nodes = [];
     this.scheduler = undefined;
+    this.mode = mode ? mode : 'static';
     var i;
     for (i = 0; i < nodes; ++i) {
         nodes.push(new Node(i));
@@ -115,28 +126,63 @@ TSS.prototype.runNode = function(node, time) {
 };
 
 TSS.prototype.launchJobOnNode = function(node, job) {
+    if (node.job != undefined)
+        return false;
     node.job = job;
     job.running = true;
     job.startTime = this.time;
     job.executedOn = node.id;
-
+    return true;
 };
 
 TSS.prototype.setCode = function(code) {
     // WARNING! If you update this, update the function below also
-    this.scheduler = new Function("jobs", "nodes", "launchJobOnNode", "time", code);
+    this.scheduler = new Function("jobs", "nodes", "launchJobOnNode", "time", "pq", code);
 };
 
-TSS.prototype.runScheduler = function() {
-    this.scheduler(this.jobs, this.nodes, this.launchJobOnNode.bind(this), this.time);
+TSS.prototype.runScheduler = function(jobs) {
+    this.scheduler(jobs, this.nodes, this.launchJobOnNode.bind(this), this.time, new PriorityQueue());
 };
-TSS.prototype.generateRandomJobs = function(count) {
+
+TSS.prototype.generateRandomJobs = function(count, arrivalTime) {
     var i = 0;
+    var aTime;
+    function getRandomInt(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
     for (i = 0; i < count; ++i) {
+        if (arrivalTime)
+            aTime = arrivalTime;
+        else
+            aTime = Math.random();
 
     }
 };
+
+TSS.prototype.finishedAllJobs = function() {
+    //TODO: Optimize this with a counter
+    var i = 0;
+    for (i = 0; i < this.jobs.length; ++i)
+        if (jobs[i].finished === false)
+            return false;
+    return true;
+};
+
 TSS.prototype.run = function() {
+    if (this.mode === 'static') {
+        this.runScheduler(jobs);
+        return;
+    }
+    var eventQueue = new PriorityQueue();
+    var i = 0;
+    for (i = 0; i < jobs.length; ++ i){
+        eventQueue.push(job, job.arrivalTime);
+    }
+    while (!this.finishedAllJobs()) {
+
+        this.time = eventQueue.peek();
+    }
+
 
 };
 
