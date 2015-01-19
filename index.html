@@ -6,23 +6,56 @@
     <script src="codemirror/lib/codemirror.js"></script>
     <link rel="stylesheet" href="codemirror/lib/codemirror.css">
     <script src="codemirror/mode/javascript/javascript.js"></script>
+    <script type="text/javascript" src="https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization',
+       'version':'1','packages':['timeline']}]}"></script>
     <script src="js/tss/job.js"></script>
 
 </head>
 <body>
 
-    <textarea id="editor">
+    <textarea id="editor" width="100%">
 
     </textarea>
     <script>
         "use strict";
-        var myCodeMirror = CodeMirror.fromTextArea(document.querySelector('#editor'), {
+        var codeMirror = CodeMirror.fromTextArea(document.querySelector('#editor'), {
             lineNumbers: true,
             mode: "javascript"
         });
-        //        var tss = new TSS(3);
-        //        TSS.setCode(" return true;");
-        //        TSS.run();
+    </script>
+    <button id="run">Run</button>
+    <div id="graph" style="width: 100%; height: 200px;">
+    </div>
+
+    <script>
+        function drawChart(jobs) {
+            var dataTable = new google.visualization.DataTable();
+            var chart = new google.visualization.Timeline(document.getElementById('graph'));
+            dataTable.addColumn({ type: 'string', id: 'Position' });
+            dataTable.addColumn({ type: 'string', id: 'Name' });
+            dataTable.addColumn({ type: 'number', id: 'Start' });
+            dataTable.addColumn({ type: 'number', id: 'End' });
+            var i;
+            for (i = 0; i < jobs.length; ++i) {
+                dataTable.addRow(jobs[i].vizRow());
+            }
+            chart.draw(dataTable, {
+                colorByRowLabel: true
+            });
+        }
+    </script>
+    <script>
+        var tss = new TSS(3);
+        //tss.setCode(" return true;");
+        //TSS.run();
+
+        document.getElementById('run').addEventListener('click', function() {
+            tss.setCode(codeMirror.getValue());
+            tss.generateRandomJobs(100);
+            tss.run();
+            drawChart(tss.jobs);
+        });
+
 
     </script>
 </body>

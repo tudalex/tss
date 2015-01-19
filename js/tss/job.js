@@ -84,18 +84,13 @@ function Edge(src, dest, cost) {
 
 function Job(executionTime, id) {
     this.id = id;
-    this.startTime = -1;
+    this.startTime = 10*id;
     this.executionTime = executionTime;
-    this.elapsedTime = 0;
-    this.finished = false;
-    this.running = false;
+    this.w = executionTime;
     this.succ = [];
     this.pred = [];
+    this.nodeId = 0;
 }
-
-Job.prototype.remainingTime = function() {
-    return this.executionTime - this.elapsedTime;
-};
 
 Job.prototype.addDep = function (job, cost) {
     if (job === null)
@@ -105,17 +100,25 @@ Job.prototype.addDep = function (job, cost) {
     this.pred.push(edge);
 };
 
-function Node(id) {
-    this.job = undefined;
-    this.id = id;
-    this.jobs_list = [];
-    this.queueTime = 0;
-}
-
-Node.prototype.enqueueJob = function (job) {
-    this.jobs_list.push(job);
-    this.queueTime += job.executionTime;
+Job.prototype.vizRow = function() {
+    var amplitude = 100;
+    return [
+        'Processing element '+this.nodeId,
+        this.id.toString(),
+        this.startTime * amplitude,
+        (this.startTime + this.executionTime) *amplitude
+    ];
 };
+
+Job.prototype.run = function(nodeId, startTime) {
+    this.nodeId = nodeId;
+    this.startTime = startTime;
+};
+
+function Node(id, queueTime) {
+    this.id = id;
+    this.queueTime = queueTime ? queueTime : 0;
+}
 
 function TSS(nodes, mode) {
     this.time = 0;
@@ -129,28 +132,24 @@ function TSS(nodes, mode) {
     }
 }
 
-TSS.prototype.runNode = function(node, time) {
-    var job = node.job;
-    job.elapsedTime += (job.elapsedTime + time) > job.executionTime ? job.executionTime - job.elapsedTime : time;
-    if (job.elapsedTime >= job.executionTime) {
-        node.job = undefined;
-        job.finished = true;
-    }
-};
+//TSS.prototype.runNode = function(node, time) {
+//    var job = node.job;
+//    job.elapsedTime += (job.elapsedTime + time) > job.executionTime ? job.executionTime - job.elapsedTime : time;
+//    if (job.elapsedTime >= job.executionTime) {
+//        node.job = undefined;
+//        job.finished = true;
+//    }
+//};
 
-TSS.prototype.launchJobOnNode = function(node, job) {
-    if (node.job != undefined)
-        return false;
-    node.job = job;
-    job.running = true;
-    job.startTime = this.time;
-    job.executedOn = node.id;
-    return true;
+TSS.prototype.launchJobOnNode = function(node, job, startTime) {
+    job.startTime = startTime;
+    job.nodeId = node.id;
+    node.queueTime  = startTime + job.executionTime;
 };
 
 TSS.prototype.setCode = function(code) {
     // WARNING! If you update this, update the function below also
-    this.scheduler = new Function("jobs", "nodes", "launchJobOnNode", "time", "pq", code);
+    this.scheduler = new Function("jobs", "nodes", "launchJobOnNode", code);
 };
 
 TSS.prototype.runScheduler = function(jobs) {
@@ -172,7 +171,7 @@ TSS.prototype.generateRandomJobs = function(count) {
             return null;
         return a[getRandomInt(0, a.length-1)];
     }
-
+    this.jobs = [];
     for (i = 0; i < count; ++i) {
         job = new Job(getRandomInt(1, 10), i);
         l = getRandomInt(1, Math.min(10, this.jobs.length));
@@ -194,7 +193,7 @@ TSS.prototype.finishedAllJobs = function() {
 
 TSS.prototype.run = function() {
     if (this.mode === 'static') {
-        this.runScheduler(jobs);
+        this.runScheduler(this.jobs);
         return;
     }
     var eventQueue = new PriorityQueue();
