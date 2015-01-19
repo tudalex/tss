@@ -94,6 +94,7 @@ function Job(executionTime, id) {
     this.sl = -1;
     this.est = -1;
     this.lst = -1;
+    this.remDeps = 0;
 }
 
 Job.prototype.addDep = function (job, cost) {
@@ -102,6 +103,7 @@ Job.prototype.addDep = function (job, cost) {
     var edge = new Edge(this, job, cost);
     job.succ.push(edge);
     this.pred.push(edge);
+    this.remDeps += 1;
 };
 
 Job.prototype.vizRow = function() {
@@ -121,6 +123,7 @@ Job.prototype.reset = function() {
     this.sl = -1;
     this.est = -1;
     this.lst = -1;
+    this.remDeps = 0;
 };
 
 function Node(id, queueTime) {
@@ -155,18 +158,24 @@ function TSS(nodes, mode) {
 //};
 
 TSS.prototype.launchJobOnNode = function(node, job, startTime) {
+    if (job.remDeps != 0)
+        return false;
     job.startTime = startTime;
     job.nodeId = node.id;
     node.finish  = startTime + job.executionTime;
+    var i;
+    for (i = 0; i < job.succ.length; ++i) {
+        job.succ[i].remDeps -= 1;
+    }
 };
 
 TSS.prototype.setCode = function(code) {
     // WARNING! If you update this, update the function below also
-    this.scheduler = new Function("jobs", "nodes", "launchJobOnNode", code);
+    this.scheduler = new Function("jobs", "nodes", "launchJobOnNode", "pq", code);
 };
 
 TSS.prototype.runScheduler = function(jobs) {
-    this.scheduler(jobs, this.nodes, this.launchJobOnNode.bind(this), this.time, new PriorityQueue());
+    this.scheduler(jobs, this.nodes, this.launchJobOnNode.bind(this), new PriorityQueue());
 };
 
 TSS.prototype.generateRandomJobs = function(count) {
@@ -205,19 +214,9 @@ TSS.prototype.generateRandomJobs = function(count) {
 //};
 
 TSS.prototype.run = function() {
-    if (this.mode === 'static') {
-        this.runScheduler(this.jobs);
-        return;
-    }
-    var eventQueue = new PriorityQueue();
-    var i = 0;
-    for (i = 0; i < jobs.length; ++ i){
-        eventQueue.push(job, job.arrivalTime);
-    }
-    while (!this.finishedAllJobs()) {
-
-        this.time = eventQueue.peek();
-    }
+    this.runScheduler(this.jobs);
+    this.verify();
+    return;
 };
 
 TSS.prototype.reset = function() {
@@ -226,6 +225,12 @@ TSS.prototype.reset = function() {
         jobs[i].reset();
     for (i = 0; i < this.nodes.length; ++i)
         nodes[i].reset();
+};
+
+TSS.prototype.verify = function() {
+    for (i = 0; i < this.jobs.length; ++i) {
+
+    }
 };
 
 
