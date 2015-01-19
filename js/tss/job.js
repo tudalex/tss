@@ -91,6 +91,9 @@ function Job(executionTime, id) {
     this.pred = [];
     this.nodeId = 0;
     this.viz = false;
+    this.sl = -1;
+    this.est = -1;
+    this.lst = -1;
 }
 
 Job.prototype.addDep = function (job, cost) {
