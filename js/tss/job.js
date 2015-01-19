@@ -84,12 +84,12 @@ function Edge(src, dest, cost) {
 
 function Job(executionTime, id) {
     this.id = id;
-    this.startTime = 10*id;
+    this.startTime = -1;
     this.executionTime = executionTime;
     this.w = executionTime;
     this.succ = [];
     this.pred = [];
-    this.nodeId = 0;
+    this.nodeId = -1;
     this.viz = false;
     this.sl = -1;
     this.est = -1;
@@ -114,15 +114,24 @@ Job.prototype.vizRow = function() {
     ];
 };
 
-Job.prototype.run = function(nodeId, startTime) {
-    this.nodeId = nodeId;
-    this.startTime = startTime;
+Job.prototype.reset = function() {
+    this.startTime = -1;
+    this.nodeId = -1;
+    this.viz = false;
+    this.sl = -1;
+    this.est = -1;
+    this.lst = -1;
 };
 
 function Node(id, queueTime) {
     this.id = id;
-    this.queueTime = queueTime ? queueTime : 0;
+    this.defaultQueueTime = queueTime ? queueTime : 0;
+    this.finish = this.defaultQueueTime;
 }
+
+Node.prototype.reset = function() {
+    this.finish = this.defaultQueueTime;
+};
 
 function TSS(nodes, mode) {
     this.time = 0;
@@ -148,7 +157,7 @@ function TSS(nodes, mode) {
 TSS.prototype.launchJobOnNode = function(node, job, startTime) {
     job.startTime = startTime;
     job.nodeId = node.id;
-    node.queueTime  = startTime + job.executionTime;
+    node.finish  = startTime + job.executionTime;
 };
 
 TSS.prototype.setCode = function(code) {
@@ -209,8 +218,14 @@ TSS.prototype.run = function() {
 
         this.time = eventQueue.peek();
     }
+};
 
-
+TSS.prototype.reset = function() {
+    var i;
+    for (i = 0; i < this.jobs.length; ++i)
+        jobs[i].reset();
+    for (i = 0; i < this.nodes.length; ++i)
+        nodes[i].reset();
 };
 
 

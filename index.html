@@ -27,6 +27,9 @@
             mode: "javascript"
         });
     </script>
+    <label for="jobs">Jobs nr:</label><input id="jobs" type="number" value="100"/>
+    <label for="nodes">Nodes:</label><input id="nodes" type="number" value="4"/>
+    <button id="generate">Generate Jobs</button>
     <button id="run">Run</button>
     <div id="graph" style="width: 100%; height: 200px;">
     </div>
@@ -49,15 +52,23 @@
         }
     </script>
     <script>
-        var tss = new TSS(3);
-        //tss.setCode(" return true;");
-        //TSS.run();
-
-        document.getElementById('run').addEventListener('click', function() {
+        var tss;
+        function generate() {
+            tss = new TSS(parseInt(document.getElementById('nodes').value));
             tss.setCode(codeMirror.getValue());
-            tss.generateRandomJobs(100);
+            tss.generateRandomJobs(parseInt(document.getElementById('jobs').value));
+        }
+        document.getElementById('generate').addEventListener('click', generate);
+        document.getElementById('run').addEventListener('click', function() {
+            if (tss === undefined) {
+                generate();
+            }
+            tss.reset();
             tss.run();
-            drawChart(tss.jobs);
+            drawChart(tss.jobs, {
+                forceIFrame: true,
+                width: 2000
+            });
         });
 
 
