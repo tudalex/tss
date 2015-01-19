@@ -159,7 +159,10 @@ function TSS(nodes, mode) {
 
 TSS.prototype.launchJobOnNode = function(node, job, startTime) {
     if (job.remDeps != 0)
-        return false;
+        throw new Error('Not all dependencies are scheduled.');
+    if (node.finish > startTime)
+        throw new Error('Node is already processing.');
+
     job.startTime = startTime;
     job.nodeId = node.id;
     node.finish  = startTime + job.executionTime;
