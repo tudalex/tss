@@ -61,7 +61,7 @@ PriorityQueue.prototype = {
     sink: function(i) {
         while (i * 2 < this.heap.length) {
             // if equal, left bubbles (maintains insertion order)
-            var leftHigher = !this.isHigherPriority(i * 2 + 1, i * 2);
+            var leftHigher = (i * 2 + 1 == this.heap.length) || !this.isHigherPriority(i * 2 + 1, i * 2);
             var childIndex = leftHigher ? i * 2 : i * 2 + 1;
 
             // if equal, sink happens (maintains insertion order)
@@ -93,6 +93,7 @@ PriorityQueue.prototype = {
 
     // returns true if node i is higher priority than j
     isHigherPriority: function(i, j) {
+        //console.log("cmp " + i + " " + j);
         return this.heap[i].compareTo(this.heap[j]) > 0;
     }
 };

@@ -1,8 +1,13 @@
 /**
-* Created by mircea on 1/19/15.
-*/
+ * Created by mircea on 1/19/15.
+ */
 
 
+function assert(condition, message) {
+    if (!condition) {
+        throw new Error(message);
+    }
+}
 
 var Stack = function(size) {
     this.a = new Array(size || 256);
@@ -54,7 +59,6 @@ var dfs = function(entry, getNodeNeighLen, getNodeIthNeigh, processNode) {
             n.viz = true;
             continue;
         }
-        console.log('Neigh i',getNodeIthNeigh(n, i));
 
         iStack.push(i+1);
         nStack.push(n);
@@ -178,7 +182,6 @@ var staticAssign = function(jobs, nodes) {
         for (j = 0; j < nodes.length; ++j) {
             node = nodes[j];
             start = node.finish;
-            console.log('Rem Deps:',job.remDeps);
 
             // iterate over dependencies
             for (k = 0; k < job.pred.length; ++k) {
@@ -191,13 +194,11 @@ var staticAssign = function(jobs, nodes) {
                     start = v;
                 }
             }
-
             if (start < minStart) {
                 minStart = start;
                 minStartNode = j;
             }
         }
-
         launchJobOnNode(nodes[minStartNode], job, minStart);
     }
 };
@@ -231,8 +232,6 @@ var MCP = function(jobs, entryJob, exitJob, nodes) {
         job.lstLst.sort(function (a, b) {
             return a-b;
         });
-        console.log('Lst',job.lst);
-        console.log(job.lstLst[0]);
     }
 
     jobs.sort(function(a, b) {
@@ -253,7 +252,7 @@ var MCP = function(jobs, entryJob, exitJob, nodes) {
 var SchedPair = function(node, job) {
     this.node = node;
     this.job = job;
-    this.start = this.computeStart();
+    this.computeStart();
     this.idx = -1;
 };
 
@@ -271,7 +270,7 @@ SchedPair.prototype.computeStart = function() {
             start = v;
         }
     }
-    return start;
+    this.start = start;
 };
 
 SchedPair.prototype.compareTo = function(other) {
@@ -297,18 +296,26 @@ SchedPair.prototype.updateStart = function() {
 var ETF = function(jobs, entryJob, exitJob, nodes) {
     computeSL(entryJob, exitJob);
 
+    var i,
+        job,
+        pair,
+        opair,
+        jobDep;
 
     var pq = new PriorityQueue();
-    var jobs = Object.create(null);
+    var jobset = Object.create(null);
 
     var addSchedPairs = function(job) {
+        var i, node, pair;
+
         // add job to set
-        jobs[job] = true;
+        jobset[job.id] = true;
 
         // add all the pairs in the pq
         job.schedPairs = new Array(nodes.length);
 
-        var i;
+        job.added = true;
+
         for (i = 0; i < nodes.length; ++i) {
             node = nodes[i];
             pair = new SchedPair(node, job);
@@ -317,19 +324,20 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
         }
     };
 
-    var i, j,
-        node,
-        job,
-        pair,
-        opair,
-        jobDep;
-
     addSchedPairs(entryJob);
 
-    console.log(pq.isEmpty());
+
     while (!pq.isEmpty()) {
         pair = pq.pop();
-        delete jobs[pair.job];
+        delete jobset[pair.job.id];
+
+        //var prevstart = pair.start;
+        ////pair.computeStart();
+        //pair.updateStart();
+        //
+        //if (prevstart != pair.start) {
+        //    throw "bogus pq";
+        //}
 
         launchJobOnNode(pair.node, pair.job, pair.start);
 
@@ -343,22 +351,23 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
         }
         pair.job.schedPairs = [];
 
-        for (job in jobs) {
-            pair = job.schedPairs[pair.node.id];
-            if (pair.updateStart()) {
-                pq.sink(pair.idx);
+        for (job in jobset) {
+            opair = jobs[job].schedPairs[pair.node.id];
+            if (opair.updateStart()) {
+                pq.sink(opair.idx);
             }
         }
 
         for (i = 0; i < pair.job.succ.length; ++i) {
             jobDep = pair.job.succ[i];
-            if (jobDep.dst.remDeps == 0) {
+            if (jobDep.dst.remDeps == 0 && !jobDep.dst.added) {
                 addSchedPairs(jobDep.dst);
             }
         }
     }
 };
 
-HLFET(jobs, jobs[0], jobs[jobs.length - 1], nodes);
+//HLFET(jobs, jobs[0], jobs[jobs.length - 1], nodes);
+ETF(jobs, jobs[0], jobs[jobs.length - 1], nodes);
 //MCP(jobs, jobs[0], jobs[jobs.length - 1], nodes);
 //ETF(jobs, jobs[0], jobs[jobs.length - 1], nodes);
