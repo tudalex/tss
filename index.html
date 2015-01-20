@@ -69,6 +69,7 @@ for (i = 0; i < jobs.length; ++i) {
             }
             tss.setCode(codeMirror.getValue());
             tss.reset();
+            document.getElementById('messages').innerText = "";
             try {
                 tss.run();
                 document.getElementById('make-span').innerText = "Make span: " + tss.makeSpan();
