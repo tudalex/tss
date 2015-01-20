@@ -189,11 +189,11 @@ TSS.prototype.launchJobOnNode = function(node, job, startTime) {
 
 TSS.prototype.setCode = function(code) {
     // WARNING! If you update this, update the function below also
-    this.scheduler = new Function("jobs", "nodes", "launchJobOnNode", "pq", code);
+    this.scheduler = new Function("jobs", "nodes", "launchJobOnNode", "PriorityQueue", code);
 };
 
 TSS.prototype.runScheduler = function(jobs) {
-    this.scheduler(jobs, this.nodes, this.launchJobOnNode.bind(this), new PriorityQueue());
+    this.scheduler(jobs, this.nodes, this.launchJobOnNode.bind(this), PriorityQueue);
 };
 
 TSS.prototype.generateRandomJobs = function(count) {
