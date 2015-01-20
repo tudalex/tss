@@ -14,11 +14,11 @@
 <body>
 
     <textarea id="editor" width="100%">
-        var i;
+var i;
 
-        for (i = 0; i < jobs.length; ++i) {
-            launchJobOnNode(nodes[i%nodes.length], jobs[i], i*10);
-        }
+for (i = 0; i < jobs.length; ++i) {
+    launchJobOnNode(nodes[i%nodes.length], jobs[i], i*10);
+}
     </textarea>
     <script>
         "use strict";
@@ -33,7 +33,7 @@
     <button id="run">Run</button>
     <div id="graph" style="width: 100%; height: 200px;">
     </div>
-
+    <pre id="messages"></pre>
     <script>
         function drawChart(jobs) {
             var dataTable = new google.visualization.DataTable();
@@ -60,11 +60,21 @@
         }
         document.getElementById('generate').addEventListener('click', generate);
         document.getElementById('run').addEventListener('click', function() {
+            console.log("Running");
             if (tss === undefined) {
                 generate();
             }
+            tss.setCode(codeMirror.getValue());
             tss.reset();
-            tss.run();
+            try {
+                tss.run();
+
+            } catch (e) {
+                //console.error(e);
+
+                document.getElementById('messages').innerText = e.message + '\n' + e.stack ;
+                throw  e;
+            }
             drawChart(tss.jobs, {
                 forceIFrame: true,
                 width: 2000

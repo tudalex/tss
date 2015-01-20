@@ -40,9 +40,13 @@ var dfs = function(entry, getNodeNeighLen, getNodeIthNeigh, processNode) {
 
     var i, n;
 
-    while (iStack.size) {
+    while (iStack.i) {
+
         i = iStack.pop();
         n = nStack.pop();
+        console.log('I',i);
+        console.log('N',n);
+        console.log('Neigh len',getNodeNeighLen(n));
 
         if (n.viz) {
             continue;
@@ -53,8 +57,9 @@ var dfs = function(entry, getNodeNeighLen, getNodeIthNeigh, processNode) {
             n.viz = true;
             continue;
         }
+        console.log('Neigh i',getNodeIthNeigh(n, i));
 
-        iStack.push(++i);
+        iStack.push(i+1);
         nStack.push(n);
 
         iStack.push(0);
@@ -91,7 +96,7 @@ var computeSL = function(entry, exit) {
         var i, neigh, v;
         var sl = 0;
         for (i = 0; i < neighLen; ++i) {
-            neigh = getNodeIthNeigh(i);
+            neigh = getNodeIthNeigh(n, i);
             v = neigh.sl;
             if (v > sl) {
                 sl = v;
@@ -117,7 +122,7 @@ var computeEST = function(entry, exit) {
         var i, neigh, v;
         var est = 0;
         for (i = 0; i < neighLen; ++i) {
-            neigh = getNodeIthNeigh(i);
+            neigh = getNodeIthNeigh(n, i);
             v = neigh.est + neigh.w + getNodeIthCost(n, i);
             if (v > est) {
                 est = v;
@@ -143,7 +148,7 @@ var computeLST = function(entry, exit) {
         var i, neigh, v;
         var lst = 4294967295;
         for (i = 0; i < neighLen; ++i) {
-            neigh = getNodeIthNeigh(i);
+            neigh = getNodeIthNeigh(n, i);
             v = neigh.lst - getNodeIthCost(n, i);
             if (v < lst) {
                 lst = v;
@@ -176,6 +181,7 @@ var staticAssign = function(jobs, nodes) {
         for (j = 0; j < nodes.length; ++j) {
             node = nodes[j];
             start = node.finish;
+            console.log('Rem Deps:',job.remDeps);
 
             // iterate over dependencies
             for (k = 0; k < job.pred.length; ++k) {
@@ -190,7 +196,7 @@ var staticAssign = function(jobs, nodes) {
             }
 
             if (start < minStart) {
-                start = minStart;
+                minStart = start;
                 minStartNode = j;
             }
         }
@@ -223,7 +229,13 @@ var MCP = function(jobs, entryJob, exitJob, nodes) {
             job.lstLst[j] = job.succ[j].dst.lst;
         }
         job.lstLst[job.succ.length] = job.lst;
-        job.lstLst.sort();
+
+
+        job.lstLst.sort(function (a, b) {
+            return a-b;
+        });
+        console.log('Lst',job.lst);
+        console.log(job.lstLst[0]);
     }
 
     jobs.sort(function(a, b) {
@@ -313,3 +325,6 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
 
 
 };
+
+//HLFET(jobs, jobs[0], jobs[jobs.length - 1], nodes);
+MCP(jobs, jobs[0], jobs[jobs.length - 1], nodes);

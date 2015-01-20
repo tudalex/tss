@@ -89,7 +89,7 @@ PriorityQueue.prototype = {
 
 function Edge(src, dest, cost) {
     this.src = src;
-    this.dest = dest;
+    this.dst = dest;
     this.cost = cost;
 }
 
@@ -106,6 +106,8 @@ function Job(executionTime, id) {
     this.est = -1;
     this.lst = -1;
     this.remDeps = 0;
+    this.node = undefined;
+    this.finish = -1;
 }
 
 Job.prototype.addDep = function (job, cost) {
@@ -134,7 +136,9 @@ Job.prototype.reset = function() {
     this.sl = -1;
     this.est = -1;
     this.lst = -1;
-    this.remDeps = 0;
+    this.remDeps = this.pred.length;
+    this.node = undefined;
+    this.finish = -1;
 };
 
 function Node(id, queueTime) {
@@ -159,19 +163,10 @@ function TSS(nodes, mode) {
     }
 }
 
-//TSS.prototype.runNode = function(node, time) {
-//    var job = node.job;
-//    job.elapsedTime += (job.elapsedTime + time) > job.executionTime ? job.executionTime - job.elapsedTime : time;
-//    if (job.elapsedTime >= job.executionTime) {
-//        node.job = undefined;
-//        job.finished = true;
-//    }
-//};
-
 TSS.prototype.launchJobOnNode = function(node, job, startTime) {
     var i, djob, cost;
     if (job.remDeps != 0)
-        throw new Error('Not all dependencies are scheduled.');
+        throw new Error('Not all dependencies are scheduled. Remaining '+job.remDeps+' dependencies.');
     if (node.finish > startTime)
         throw new Error('Node is already processing.');
     for (i = 0; i < job.pred; ++i) {
@@ -183,10 +178,12 @@ TSS.prototype.launchJobOnNode = function(node, job, startTime) {
 
     job.startTime = startTime;
     job.nodeId = node.id;
+    job.node = node;
     node.finish  = startTime + job.executionTime;
+    job.finish = node.finish;
 
     for (i = 0; i < job.succ.length; ++i) {
-        job.succ[i].remDeps -= 1;
+        job.succ[i].dst.remDeps -= 1;
     }
 };
 
@@ -216,23 +213,20 @@ TSS.prototype.generateRandomJobs = function(count) {
     }
     this.jobs = [];
     for (i = 0; i < count; ++i) {
-        job = new Job(getRandomInt(1, 10), i);
+        job = new Job(getRandomInt(1, 100), i);
         l = getRandomInt(1, Math.min(10, this.jobs.length));
         for (j = 0; j < l; ++j) {
-            job.addDep(getRandomElement(this.jobs));
+            job.addDep(getRandomElement(this.jobs), getRandomInt(1, 10));
         }
         this.jobs.push(job);
     }
-};
+    job = new Job(0, count);
+    for (i = 0; i < count; ++i)
+        if (this.jobs[i].succ.length == 0)
+            job.addDep(this.jobs[i], getRandomInt(1, 10));
+    this.jobs.push(job);
 
-//TSS.prototype.finishedAllJobs = function() {
-//    //TODO: Optimize this with a counter
-//    var i = 0;
-//    for (i = 0; i < this.jobs.length; ++i)
-//        if (jobs[i].finished === false)
-//            return false;
-//    return true;
-//};
+};
 
 TSS.prototype.run = function() {
     this.runScheduler(this.jobs);
@@ -243,9 +237,9 @@ TSS.prototype.run = function() {
 TSS.prototype.reset = function() {
     var i;
     for (i = 0; i < this.jobs.length; ++i)
-        jobs[i].reset();
+        this.jobs[i].reset();
     for (i = 0; i < this.nodes.length; ++i)
-        nodes[i].reset();
+        this.nodes[i].reset();
 };
 
 
