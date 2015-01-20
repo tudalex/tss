@@ -13,7 +13,7 @@
 </head>
 <body>
 
-    <textarea id="editor" width="100%">
+    <textarea id="editor" width="100%" height="800px">
 var i;
 
 for (i = 0; i < jobs.length; ++i) {
@@ -69,15 +69,15 @@ for (i = 0; i < jobs.length; ++i) {
             }
             tss.setCode(codeMirror.getValue());
             tss.reset();
-            document.getElementById('messages').innerText = "";
+            document.getElementById('messages').textContent = "";
             try {
                 tss.run();
-                document.getElementById('make-span').innerText = "Make span: " + tss.makeSpan();
-                document.getElementById('flow-time').innerText = "Flow time: " + tss.flowTime();
+                document.getElementById('make-span').textContent = "Make span: " + tss.makeSpan();
+                document.getElementById('flow-time').textContent = "Flow time: " + tss.flowTime();
             } catch (e) {
                 //console.error(e);
 
-                document.getElementById('messages').innerText = e.message + '\n' + e.stack ;
+                document.getElementById('messages').textContent = e.message + '\n' + e.stack ;
                 throw  e;
             }
             drawChart(tss.jobs, {
