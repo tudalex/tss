@@ -2,95 +2,13 @@
  * Created by mircea on 1/19/15.
  */
 
-
-function assert(condition, message) {
-    if (!condition) {
-        throw new Error(message);
-    }
-}
-
-var Stack = function(size) {
-    this.a = new Array(size || 256);
-    this.size = size;
-    this.i = 0;
-};
-
-Stack.prototype.push = function(e) {
-    this.a[this.i++] = e;
-};
-
-Stack.prototype.pop = function() {
-    return this.a[--this.i];
-};
-
-Stack.prototype.peek = function() {
-    return this.a[this.i-1];
-};
-
-Stack.prototype.clear = function() {
-    this.i = 0;
-};
-
-
-var iStack = new Stack(1024);
-var nStack = new Stack(1024);
-
-var dfs = function(entry, getNodeNeighLen, getNodeIthNeigh, processNode) {
-
-    iStack.clear();
-    nStack.clear();
-
-    iStack.push(0);
-    nStack.push(entry);
-
-    var i, n;
-
-    while (iStack.i) {
-
-        i = iStack.pop();
-        n = nStack.pop();
-
-        if (n.viz) {
-            continue;
-        }
-
-        if (i == getNodeNeighLen(n)) {
-            processNode(n);
-            n.viz = true;
-            continue;
-        }
-
-        iStack.push(i+1);
-        nStack.push(n);
-
-        iStack.push(0);
-        nStack.push(getNodeIthNeigh(n, i));
-    }
-};
-
-
-var getNodePredLen      = function(n)    { return n.pred.length;    };
-var getNodeIthPred      = function(n, i) { return n.pred[i].src;    };
-var getNodeIthPredCost  = function(n, i) { return n.pred[i].cost;   };
-
-var getNodeSuccLen      = function(n)    { return n.succ.length;    };
-var getNodeIthSucc      = function(n, i) { return n.succ[i].dst;    };
-var getNodeIthSuccCost  = function(n, i) { return n.succ[i].cost;   };
-
-
-var resetViz = function(nodes) {
-    var i;
-    for (i = 0; i < nodes.length; ++i) {
-        nodes[i].viz = false;
-    }
-};
-
+"use strict";
 
 var computeSL = function(entry, exit) {
 
-    var getNodeNeighLen = getNodeSuccLen,
-        getNodeIthNeigh = getNodeIthSucc,
-        getNodeIthCost  = getNodeIthSuccCost;
+    var getNodeNeighLen = tss.getNodeSuccLen,
+        getNodeIthNeigh = tss.getNodeIthSucc,
+        getNodeIthCost  = tss.getNodeIthSuccCost;
 
     var processNode = function(n) {
         var neighLen = getNodeNeighLen(n);
@@ -109,14 +27,15 @@ var computeSL = function(entry, exit) {
     exit.sl = exit.w;
     exit.viz = true;
 
-    dfs(entry, getNodeNeighLen, getNodeIthNeigh, processNode);
+    tss.dfs(entry, getNodeNeighLen, getNodeIthNeigh, processNode);
 };
+
 
 var computeEST = function(entry, exit) {
 
-    var getNodeNeighLen = getNodePredLen,
-        getNodeIthNeigh = getNodeIthPred,
-        getNodeIthCost  = getNodeIthPredCost;
+    var getNodeNeighLen = tss.getNodePredLen,
+        getNodeIthNeigh = tss.getNodeIthPred,
+        getNodeIthCost  = tss.getNodeIthPredCost;
 
     var processNode = function(n) {
         var neighLen = getNodeNeighLen(n);
@@ -135,14 +54,15 @@ var computeEST = function(entry, exit) {
     entry.est = 0;
     entry.viz = true;
 
-    dfs(exit, getNodeNeighLen, getNodeIthNeigh, processNode);
+    tss.dfs(exit, getNodeNeighLen, getNodeIthNeigh, processNode);
 };
+
 
 var computeLST = function(entry, exit) {
 
-    var getNodeNeighLen = getNodeSuccLen,
-        getNodeIthNeigh = getNodeIthSucc,
-        getNodeIthCost  = getNodeIthSuccCost;
+    var getNodeNeighLen = tss.getNodeSuccLen,
+        getNodeIthNeigh = tss.getNodeIthSucc,
+        getNodeIthCost  = tss.getNodeIthSuccCost;
 
     var processNode = function(n) {
         var neighLen = getNodeNeighLen(n);
@@ -161,9 +81,8 @@ var computeLST = function(entry, exit) {
     exit.lst = exit.est;
     exit.viz = true;
 
-    dfs(entry, getNodeNeighLen, getNodeIthNeigh, processNode);
+    tss.dfs(entry, getNodeNeighLen, getNodeIthNeigh, processNode);
 };
-
 
 
 var staticAssign = function(jobs, nodes) {
@@ -196,10 +115,10 @@ var staticAssign = function(jobs, nodes) {
             }
             if (start < minStart) {
                 minStart = start;
-                minStartNode = j;
+                minStartNode = node;
             }
         }
-        launchJobOnNode(nodes[minStartNode], job, minStart);
+        tss.launchJobOnNode(minStartNode, job, minStart);
     }
 };
 
@@ -216,7 +135,7 @@ var HLFET = function(jobs, entryJob, exitJob, nodes) {
 
 var MCP = function(jobs, entryJob, exitJob, nodes) {
     computeEST(entryJob, exitJob);
-    resetViz(jobs);
+    tss.resetVizJobs();
     computeLST(entryJob, exitJob);
 
     var i, j, job;
@@ -256,38 +175,40 @@ var SchedPair = function(node, job) {
     this.idx = -1;
 };
 
-SchedPair.prototype.computeStart = function() {
-    var i, v;
-    var jobDep;
-    var start = this.node.finish;
-    for (i = 0; i < this.job.pred.length; ++i) {
-        jobDep = this.job.pred[i];
-        v = jobDep.src.finish;
-        if (jobDep.src.node != this.node) {
-            v += jobDep.cost;
+SchedPair.prototype = {
+    computeStart: function () {
+        var i, v;
+        var jobDep;
+        var start = this.node.finish;
+        for (i = 0; i < this.job.pred.length; ++i) {
+            jobDep = this.job.pred[i];
+            v = jobDep.src.finish;
+            if (jobDep.src.node != this.node) {
+                v += jobDep.cost;
+            }
+            if (v > start) {
+                start = v;
+            }
         }
-        if (v > start) {
-            start = v;
+        this.start = start;
+    },
+
+    compareTo: function (other) {
+        if (this.start == other.start) {
+            // select job with higher sl
+            return this.job.sl - other.job.sl;
         }
-    }
-    this.start = start;
-};
+        // select pair with lower starting time
+        return other.start - this.start;
+    },
 
-SchedPair.prototype.compareTo = function(other) {
-    if (this.start == other.start) {
-        // select job with higher sl
-        return this.job.sl - other.job.sl;
+    updateStart: function () {
+        if (this.node.finish > this.start) {
+            this.start = this.node.finish;
+            return true;
+        }
+        return false;
     }
-    // select pair with lower starting time
-    return other.start - this.start;
-};
-
-SchedPair.prototype.updateStart = function() {
-    if (this.node.finish > this.start) {
-        this.start = this.node.finish;
-        return true;
-    }
-    return false;
 };
 
 
@@ -297,19 +218,16 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
     computeSL(entryJob, exitJob);
 
     var i,
-        job,
-        pair,
-        opair,
-        jobDep;
+        jobId, pair, opair, jobDep;
 
-    var pq = new PriorityQueue();
+    var pq = new tss.utils.PriorityQueue();
     var jobset = Object.create(null);
 
     var addSchedPairs = function(job) {
         var i, node, pair;
 
         // add job to set
-        jobset[job.id] = true;
+        jobset[job.id] = job;
 
         // add all the pairs in the pq
         job.schedPairs = new Array(nodes.length);
@@ -326,20 +244,13 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
 
     addSchedPairs(entryJob);
 
-
     while (!pq.isEmpty()) {
         pair = pq.pop();
         delete jobset[pair.job.id];
 
-        //var prevstart = pair.start;
-        ////pair.computeStart();
-        //pair.updateStart();
-        //
-        //if (prevstart != pair.start) {
-        //    throw "bogus pq";
-        //}
+        assert(!pair.updateStart(), "Pq failed, start time should be already updated");
 
-        launchJobOnNode(pair.node, pair.job, pair.start);
+        tss.launchJobOnNode(pair.node, pair.job, pair.start);
 
         for (i = 0; i < nodes.length; ++i) {
             opair = pair.job.schedPairs[i];
@@ -351,8 +262,8 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
         }
         pair.job.schedPairs = [];
 
-        for (job in jobset) {
-            opair = jobs[job].schedPairs[pair.node.id];
+        for (jobId in jobset) {
+            opair = jobset[jobId].schedPairs[pair.node.id];
             if (opair.updateStart()) {
                 pq.sink(opair.idx);
             }
@@ -367,7 +278,10 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
     }
 };
 
-//HLFET(jobs, jobs[0], jobs[jobs.length - 1], nodes);
-ETF(jobs, jobs[0], jobs[jobs.length - 1], nodes);
-//MCP(jobs, jobs[0], jobs[jobs.length - 1], nodes);
-//ETF(jobs, jobs[0], jobs[jobs.length - 1], nodes);
+var run = function(algo) {
+    algo(tss.jobs, tss.entryJob, tss.exitJob, tss.nodes);
+};
+
+//run(HLFET);
+//run(MCP);
+run(ETF);

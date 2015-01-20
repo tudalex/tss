@@ -16,25 +16,31 @@
     <textarea id="editor" width="100%" height="800px">
 var i;
 
-for (i = 0; i < jobs.length; ++i) {
-    launchJobOnNode(nodes[i%nodes.length], jobs[i], i*10);
+for (i = 0; i < tss.jobs.length; ++i) {
+    tss.launchJobOnNode(tss.nodes[i%nodes.length], tss.jobs[i], i*10);
 }
     </textarea>
+
     <script>
         "use strict";
-        var codeMirror = CodeMirror.fromTextArea(document.querySelector('#editor'), {
-            lineNumbers: true,
-            mode: "javascript"
-        });
+        var codeMirror = CodeMirror.fromTextArea(
+                document.querySelector('#editor'),
+                {
+                    lineNumbers: true,
+                    mode: "javascript"
+                });
     </script>
+
     <label for="jobs">Jobs nr:</label><input id="jobs" type="number" value="100"/>
     <label for="nodes">Nodes:</label><input id="nodes" type="number" value="4"/>
+
     <button id="generate">Generate Jobs</button>
     <button id="run">Run</button>
+
     <span id="make-span"></span>
     <span id="flow-time"></span>
-    <div id="graph" style="width: 100%; height: 200px;">
-    </div>
+
+    <div id="graph" style="width: 100%; height: 200px;"></div>
     <pre id="messages"></pre>
 
     <script>
@@ -58,6 +64,7 @@ for (i = 0; i < jobs.length; ++i) {
         var tss;
         function generate() {
             tss = new TSS(parseInt(document.getElementById('nodes').value));
+            window.tss = tss;
             tss.setCode(codeMirror.getValue());
             tss.generateRandomJobs(parseInt(document.getElementById('jobs').value));
         }
@@ -72,8 +79,8 @@ for (i = 0; i < jobs.length; ++i) {
             document.getElementById('messages').textContent = "";
             try {
                 tss.run();
-                document.getElementById('make-span').textContent = "Make span: " + tss.makeSpan();
-                document.getElementById('flow-time').textContent = "Flow time: " + tss.flowTime();
+                document.getElementById('make-span').textContent = "Make span: " + tss.computeMakeSpan();
+                document.getElementById('flow-time').textContent = "Flow time: " + tss.computeFlowTime();
             } catch (e) {
                 //console.error(e);
 
