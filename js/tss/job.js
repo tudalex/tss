@@ -6,10 +6,19 @@
 
 
 // takes an array of objects with {data, priority}
-function PriorityQueue (arr, comparator) {
+function PriorityQueue(arr, comparator) {
     this.heap = [null];
-    if (arr) for (var i=0; i< arr.length; i++)
-        this.push(arr[i]);
+
+    if (comparator) {
+        this.isHigherPriority = function(i, j) {
+            return comparator(this.heap[i], this.heap[j]) > 0;
+        };
+    }
+
+    if (arr) {
+        for (var i = 0; i < arr.length; i++)
+            this.push(arr[i]);
+    }
 }
 
 PriorityQueue.prototype = {
@@ -24,23 +33,24 @@ PriorityQueue.prototype = {
     },
 
     // removes and returns the data of highest priority
-    pop: function () {
+    pop: function() {
         return this.remove(1);
     },
 
     peek: function() {
-        var topVal = this.heap[1].data;
+        var topVal = this.heap[1];
         return topVal;
     },
 
     // bubbles node i up the binary tree based on
     // priority until heap conditions are restored
-    bubble: function (i) {
+    bubble: function(i) {
         while (i > 1) {
             var parentIndex = i >> 1; // <=> floor(i/2)
 
             // if equal, no bubble (maintains insertion order)
-            if (!this.isHigherPriority(i, parentIndex)) break;
+            if (!this.isHigherPriority(i, parentIndex))
+                break;
 
             this.swap(i, parentIndex);
             i = parentIndex;
@@ -48,14 +58,15 @@ PriorityQueue.prototype = {
     },
 
     // does the opposite of the bubble() function
-    sink: function (i) {
+    sink: function(i) {
         while (i * 2 < this.heap.length) {
             // if equal, left bubbles (maintains insertion order)
             var leftHigher = !this.isHigherPriority(i * 2 + 1, i * 2);
             var childIndex = leftHigher ? i * 2 : i * 2 + 1;
 
             // if equal, sink happens (maintains insertion order)
-            if (this.isHigherPriority(i, childIndex)) break;
+            if (this.isHigherPriority(i, childIndex))
+                break;
 
             this.swap(i, childIndex);
             i = childIndex;
@@ -63,27 +74,26 @@ PriorityQueue.prototype = {
     },
 
     remove: function(i) {
-        var e = this.heap[i];
         this.swap(i, this.heap.length-1);
-        this.sink(i);
+        var e = this.heap.pop();
         e.idx = -1;
+        this.sink(i);
         return e;
     },
 
     // swaps the addresses of 2 nodes
-    swap: function (i, j) {
+    swap: function(i, j) {
         var temp = this.heap[i];
         this.heap[i] = this.heap[j];
         this.heap[j] = temp;
 
-        var tempIdx = this.heap[i].idx;
-        this.heap[i].idx = this.heap[j].idx;
-        this.heap[j].idx = tempIdx;
+        this.heap[i].idx = i;
+        this.heap[j].idx = j;
     },
 
     // returns true if node i is higher priority than j
-    isHigherPriority: function (i, j) {
-        return this.heap[i].compareTo(this.heap[j]);
+    isHigherPriority: function(i, j) {
+        return this.heap[i].compareTo(this.heap[j]) > 0;
     }
 };
 

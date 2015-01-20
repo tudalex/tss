@@ -279,9 +279,11 @@ SchedPair.prototype.computeStart = function() {
 
 SchedPair.prototype.compareTo = function(other) {
     if (this.start == other.start) {
+        // select job with higher sl
         return this.job.sl - other.job.sl;
     }
-    return this.start - other.start;
+    // select pair with lower starting time
+    return other.start - this.start;
 };
 
 SchedPair.prototype.updateStart = function() {
@@ -300,9 +302,16 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
 
 
     var pq = new PriorityQueue();
+    var jobs = Object.create(null);
 
     var addSchedPairs = function(job) {
+        // add job to set
+        jobs[job] = true;
+
+        // add all the pairs in the pq
         job.schedPairs = new Array(nodes.length);
+
+        var i;
         for (i = 0; i < nodes.length; ++i) {
             node = nodes[i];
             pair = new SchedPair(node, job);
@@ -313,17 +322,44 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
 
     var i, j,
         node,
-        pair;
+        job,
+        pair,
+        opair,
+        jobDep;
 
     addSchedPairs(entryJob);
 
 
     while (!pq.isEmpty()) {
         pair = pq.pop();
+        delete jobs[pair.job];
 
+        launchJobOnNode(pair.node, pair.job, pair.start);
+
+        for (i = 0; i < nodes.length; ++i) {
+            opair = pair.job.schedPairs[i];
+            if (opair.idx < 0) {
+                // was popped
+                continue;
+            }
+            pq.remove(opair.idx);
+        }
+        pair.job.schedPairs = [];
+
+        for (job in jobs) {
+            pair = job.schedPairs[pair.node.id];
+            if (pair.updateStart()) {
+                pq.sink(pair.idx);
+            }
+        }
+
+        for (i = 0; i < pair.job.succ.length; ++i) {
+            jobDep = pair.job.succ[i];
+            if (jobDep.dst.remDeps == 0) {
+                addSchedPairs(jobDep.dst);
+            }
+        }
     }
-
-
 };
 
 //HLFET(jobs, jobs[0], jobs[jobs.length - 1], nodes);
