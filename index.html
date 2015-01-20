@@ -31,9 +31,12 @@ for (i = 0; i < jobs.length; ++i) {
     <label for="nodes">Nodes:</label><input id="nodes" type="number" value="4"/>
     <button id="generate">Generate Jobs</button>
     <button id="run">Run</button>
+    <span id="make-span"></span>
+    <span id="flow-time"></span>
     <div id="graph" style="width: 100%; height: 200px;">
     </div>
     <pre id="messages"></pre>
+
     <script>
         function drawChart(jobs) {
             var dataTable = new google.visualization.DataTable();
@@ -68,7 +71,8 @@ for (i = 0; i < jobs.length; ++i) {
             tss.reset();
             try {
                 tss.run();
-
+                document.getElementById('make-span').innerText = "Make span: " + tss.makeSpan();
+                document.getElementById('flow-time').innerText = "Flow time: " + tss.flowTime();
             } catch (e) {
                 //console.error(e);
 

@@ -44,9 +44,6 @@ var dfs = function(entry, getNodeNeighLen, getNodeIthNeigh, processNode) {
 
         i = iStack.pop();
         n = nStack.pop();
-        console.log('I',i);
-        console.log('N',n);
-        console.log('Neigh len',getNodeNeighLen(n));
 
         if (n.viz) {
             continue;
@@ -329,7 +326,7 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
 
     addSchedPairs(entryJob);
 
-
+    console.log(pq.isEmpty());
     while (!pq.isEmpty()) {
         pair = pq.pop();
         delete jobs[pair.job];
@@ -362,5 +359,6 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
     }
 };
 
-//HLFET(jobs, jobs[0], jobs[jobs.length - 1], nodes);
-MCP(jobs, jobs[0], jobs[jobs.length - 1], nodes);
+HLFET(jobs, jobs[0], jobs[jobs.length - 1], nodes);
+//MCP(jobs, jobs[0], jobs[jobs.length - 1], nodes);
+//ETF(jobs, jobs[0], jobs[jobs.length - 1], nodes);

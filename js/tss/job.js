@@ -29,7 +29,7 @@ PriorityQueue.prototype = {
     },
 
     isEmpty: function() {
-        return this.heap.length > 1;
+        return this.heap.length <= 1;
     },
 
     // removes and returns the data of highest priority
@@ -118,6 +118,7 @@ function Job(executionTime, id) {
     this.remDeps = 0;
     this.node = undefined;
     this.finish = -1;
+    this.added = false;
 }
 
 Job.prototype.addDep = function (job, cost) {
@@ -149,6 +150,7 @@ Job.prototype.reset = function() {
     this.remDeps = this.pred.length;
     this.node = undefined;
     this.finish = -1;
+    this.added = false;
 };
 
 function Node(id, queueTime) {
@@ -179,10 +181,10 @@ TSS.prototype.launchJobOnNode = function(node, job, startTime) {
         throw new Error('Not all dependencies are scheduled. Remaining '+job.remDeps+' dependencies.');
     if (node.finish > startTime)
         throw new Error('Node is already processing.');
-    for (i = 0; i < job.pred; ++i) {
+    for (i = 0; i < job.pred.length; ++i) {
         djob = job.pred[i].src;
         cost = djob.nodeId === node.id ? 0 : job.pred[i].cost;
-        if (djob.startTime + djob.executionTime + cost > startTime)
+        if (djob.finish + cost > startTime)
             throw  new Error('Job started before deps finished.');
     }
 
@@ -250,6 +252,24 @@ TSS.prototype.reset = function() {
         this.jobs[i].reset();
     for (i = 0; i < this.nodes.length; ++i)
         this.nodes[i].reset();
+};
+
+TSS.prototype.makeSpan = function() {
+    var i;
+    var m = 0;
+    for (i = 0; i < this.jobs.length; ++i) {
+        m = m < this.jobs[i].finish ? this.jobs[i].finish : m;
+    }
+    return m;
+};
+
+TSS.prototype.flowTime = function() {
+    var i;
+    var sum = 0;
+    for (i = 0; i < this.jobs.length; ++i) {
+        sum += this.jobs[i].finish;
+    }
+    return sum;
 };
 
 
