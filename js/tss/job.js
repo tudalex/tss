@@ -142,13 +142,6 @@ Stack.prototype = {
 };
 
 
-
-
-
-
-
-
-
 function Edge(src, dest, cost) {
     this.src = src;
     this.dst = dest;
@@ -163,6 +156,7 @@ function Job(w, id, req, dataNode, arrivalTime) {
     this.succ = [];
     this.pred = [];
     this.req = [];
+    this.remaining = w;
     if (req) {
         this.req = req;
     }
@@ -171,7 +165,9 @@ function Job(w, id, req, dataNode, arrivalTime) {
     if (dataNode) {
         this.dataNode = dataNode;
     }
-    this.arrivalTime = [];
+    this.arrivalTime = 0;
+    this.finsihed = false;
+    this.log = [];
     this.reset();
 }
 
@@ -185,14 +181,18 @@ Job.prototype = {
         this.remDeps += 1;
     },
 
-    vizRow: function() {
+    vizRow: function(dataTable) {
         var amplitude = 100;
-        return [
-            'Node ' + this.node.id,
-            this.id.toString(),
-            this.startTime * amplitude,
-            (this.startTime + this.w) * amplitude
-        ];
+        this.log.forEach(entry => {
+            console.log(entry);
+            dataTable.addRow([
+                'Node ' + entry.node.id,
+                this.id.toString(),
+                entry.startTime * amplitude,
+                (entry.startTime + entry.time) * amplitude
+            ]);
+        })
+
     },
 
     reset: function() {
@@ -208,6 +208,18 @@ Job.prototype = {
         this.remDeps = this.pred.length;
         this.added = false;
         this.viz = false;
+        this.remaining = this.w;
+    },
+    process: function (value) {
+        this.remaining -= value;
+        if (this.log.length > 0 && this.log[0].node.id === this.node.id) {
+            this.log[0].time += 1;
+        }
+        this.log.push({
+            node: this.node,
+            startTime: tss.time,
+            time: 1,
+        })
     }
 };
 
@@ -216,12 +228,37 @@ function Node(id, queueTime) {
     this.id = id;
     this.defaultQueueTime = queueTime ? queueTime : 0;
     this.finish = this.defaultQueueTime;
-    this.res = [128, 128, 128];
+    this.res = [1, 1, 1];
+    this.jobsRunning = [];
 }
 
 Node.prototype = {
     reset: function() {
         this.finish = this.defaultQueueTime;
+    },
+    update: function () {
+        const newRes = [1, 1, 1];
+        this.jobsRunning.forEach((job) => {
+            if (job.remaining <= 0) {
+                job.finished = true;
+            } else {
+                for (let i = 0; i < newRes.length; ++i) {
+                    newRes[i] -= job.req[i];
+                }
+            }
+
+        });
+        this.jobsRunning = this.jobsRunning.filter(x => !x.finsihed);
+        this.res = newRes;
+    },
+    tick: function () {
+        this.jobsRunning.forEach((job) => {
+            if (job.dataNode === this.id) {
+                job.process(1);
+            } else {
+                job.process(0.9);
+            }
+        });
     }
 };
 
@@ -240,24 +277,70 @@ function TSS(nodes) {
 TSS.prototype = {
     launchJobOnNode: function(node, job, startTime) {
         var i, djob, cost;
-
-        assert(job.remDeps == 0, 'Not all dependencies are scheduled.', job);
-        assert(startTime >= node.finish, 'Node is already processing.', node);
-
-        for (i = 0; i < job.pred.length; ++i) {
-            djob = job.pred[i].src;
-            cost = djob.node == node ? 0 : job.pred[i].cost;
-            assert(startTime >= djob.finish + cost, 'Job started before deps finished.');
+        if (!startTime) {
+            startTime = this.time;
         }
 
-        job.startTime = startTime;
+        // assert(job.remDeps == 0, 'Not all dependencies are scheduled.', job);
+        // assert(startTime >= node.finish, 'Node is already processing.', node);
+
+        // for (i = 0; i < job.pred.length; ++i) {
+        //     djob = job.pred[i].src;
+        //     cost = djob.node == node ? 0 : job.pred[i].cost;
+        //     assert(startTime >= djob.finish + cost, 'Job started before deps finished.');
+        // }
+
+        console.log("Launching job" + job.id + "on node" + node.id);
+
+        // job.startTime = startTime;
         job.node = node;
-        node.finish = startTime + job.w;
-        job.finish = node.finish;
+        // node.finish = startTime + job.remaining;
+        // job.finish = node.finish;
 
         for (i = 0; i < job.succ.length; ++i) {
             job.succ[i].dst.remDeps -= 1;
         }
+
+        node.jobsRunning.push(job);
+        node.update(this.time);
+    },
+
+    removeJobFromNoe: function(job) {
+        const node = job.node;
+        job.node = null;
+        node.runningJobs = node.runningJobs.filter(x => x.id !== job.id);
+    },
+
+    dot: function (node, job) {
+        let sum = 0;
+        for (let i = 0; i < 3; ++i) {
+            sum += node.res[i] * job.req[i];
+        }
+        return sum;
+    },
+
+    validNodes: function (job) {
+        const nodes = [];
+        var i, j, valid;
+        for (i = 0; i < this.nodes.length; ++i) {
+            valid = true;
+            for (j = 0; j < this.nodes[i].res.length; ++j) {
+                if (this.nodes[i].res[j] < job.req[j]) {
+                    valid = false;
+                    break;
+                }
+            }
+            if (valid) {
+                nodes.push(this.nodes[i]);
+            }
+        }
+        return nodes;
+    },
+    
+    availableJobs: function () {
+        return this.jobs.filter(job => {
+            return job.remaining > 0 && job.arrivalTime < this.time;
+        })
     },
 
     setCode: function(code) {
@@ -269,11 +352,18 @@ TSS.prototype = {
         var l = this.jobs.length * 2;
         this.iStack = new Stack(l);
         this.nStack = new Stack(l);
+        this.time = 0;
     },
 
     runScheduler: function() {
         this.preRunScheduler();
-        this.scheduler(this);
+        var i;
+        for (i = 0; i < 10; ++i) {
+            this.time += 1;
+            this.nodes.forEach((node) => node.tick());
+            this.scheduler(this);
+        }
+        console.log("done");
     },
 
 
@@ -309,28 +399,28 @@ TSS.prototype = {
 
         function getRequirements() {
             return [
-                getRandomInt(0, 128), // cpu
-                getRandomInt(0, 128), // mem
-                getRandomInt(0, 128), // network
+                Math.random(), // cpu
+                Math.random(), // mem
+                Math.random(), // network
             ];
         }
 
         this.jobs = [];
         for (i = 0; i < count; ++i) {
-            job = new Job(getRandomInt(1, 100), i, getRequirements(), getRandomInt(0, this.nodes.length - 1));
+            job = new Job(getRandomInt(1, 100), i, getRequirements(), getRandomInt(0, this.nodes.length - 1), i * 2);
             l = getRandomInt(1, Math.min(10, this.jobs.length));
-            for (j = 0; j < l; ++j) {
-                job.addDep(getRandomElement(this.jobs), getRandomInt(1, 10));
-            }
+            // for (j = 0; j < l; ++j) {
+            //     job.addDep(getRandomElement(this.jobs), getRandomInt(1, 10));
+            // }
             this.jobs.push(job);
         }
 
         // Make exit node
         job = new Job(0, count);
-        for (i = 0; i < count; ++i) {
-            if (this.jobs[i].succ.length == 0)
-                job.addDep(this.jobs[i], 0);
-        }
+        // for (i = 0; i < count; ++i) {
+        //     if (this.jobs[i].succ.length == 0)
+        //         job.addDep(this.jobs[i], 0);
+        // }
         this.jobs.push(job);
 
         this.entryJob = this.jobs[0];

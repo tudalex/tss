@@ -278,10 +278,27 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
     }
 };
 
-var run = function(algo) {
-    algo(tss.jobs, tss.entryJob, tss.exitJob, tss.nodes);
-};
+// var run = function(algo) {
+//     algo(tss.jobs, tss.entryJob, tss.exitJob, tss.nodes);
+// };
 
 //run(HLFET);
 // run(MCP);
 // run(ETF);
+
+
+const jobs = tss.availableJobs();
+const unscheduledJobs = jobs.filter(x => !x.node);
+unscheduledJobs.forEach(job => {
+    const validNodes = tss.validNodes(job);
+    const nodes = validNodes;
+    // console.log(job, validNodes);
+    // const nodes = _(validNodes).map(node => ({
+    //     node: node,
+    //     score: tss.dot(node, job)
+    // })).sortBy('score').reverse().values();
+    console.log(nodes)
+    if (nodes.length > 0) {
+        tss.launchJobOnNode(nodes[0], job)
+    }
+})

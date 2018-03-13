@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <title></title>
     <script src="codemirror/lib/codemirror.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.5/lodash.min.js"></script>
     <link rel="stylesheet" href="codemirror/lib/codemirror.css">
     <script src="codemirror/mode/javascript/javascript.js"></script>
     <script type="text/javascript" src="https://www.google.com/jsapi?autoload={'modules':[{'name':'visualization',
@@ -17,7 +19,7 @@
 var i;
 
 for (i = 0; i < tss.jobs.length; ++i) {
-    tss.launchJobOnNode(tss.nodes[i%nodes.length], tss.jobs[i], i*10);
+    tss.launchJobOnNode(tss.nodes[i%tss.nodes.length], tss.jobs[i], i*10);
 }
     </textarea>
 
@@ -29,6 +31,11 @@ for (i = 0; i < tss.jobs.length; ++i) {
                     lineNumbers: true,
                     mode: "javascript"
                 });
+
+        axios.get('js/tss/algo.js').then((body) => {
+            console.log(body)
+            codeMirror.getDoc().setValue(body.data)
+        });
     </script>
 
     <label for="jobs">Jobs nr:</label><input id="jobs" type="number" value="100"/>
@@ -53,7 +60,8 @@ for (i = 0; i < tss.jobs.length; ++i) {
             dataTable.addColumn({ type: 'number', id: 'End' });
             var i;
             for (i = 0; i < jobs.length; ++i) {
-                dataTable.addRow(jobs[i].vizRow());
+                console.log(jobs[i].log)
+                jobs[i].vizRow(dataTable);
             }
             chart.draw(dataTable, {
                 colorByRowLabel: true
