@@ -157,11 +157,21 @@ function Edge(src, dest, cost) {
 
 
 
-function Job(w, id) {
+function Job(w, id, req, dataNode, arrivalTime) {
     this.id = id;
     this.w = w;
     this.succ = [];
     this.pred = [];
+    this.req = [];
+    if (req) {
+        this.req = req;
+    }
+    this.dataNode = 0;
+
+    if (dataNode) {
+        this.dataNode = dataNode;
+    }
+    this.arrivalTime = [];
     this.reset();
 }
 
@@ -201,10 +211,12 @@ Job.prototype = {
     }
 };
 
+
 function Node(id, queueTime) {
     this.id = id;
     this.defaultQueueTime = queueTime ? queueTime : 0;
     this.finish = this.defaultQueueTime;
+    this.res = [128, 128, 128];
 }
 
 Node.prototype = {
@@ -295,9 +307,17 @@ TSS.prototype = {
             return a[getRandomIntExp(0, a.length - 1)];
         }
 
+        function getRequirements() {
+            return [
+                getRandomInt(0, 128), // cpu
+                getRandomInt(0, 128), // mem
+                getRandomInt(0, 128), // network
+            ];
+        }
+
         this.jobs = [];
         for (i = 0; i < count; ++i) {
-            job = new Job(getRandomInt(1, 100), i);
+            job = new Job(getRandomInt(1, 100), i, getRequirements(), getRandomInt(0, this.nodes.length - 1));
             l = getRandomInt(1, Math.min(10, this.jobs.length));
             for (j = 0; j < l; ++j) {
                 job.addDep(getRandomElement(this.jobs), getRandomInt(1, 10));
@@ -455,7 +475,14 @@ TSS.prototype = {
 
     utils: {
         PriorityQueue: PriorityQueue,
-        Stack: Stack
+        Stack: Stack,
+        dot: function (a, b) {
+                var sum = 0;
+                for (var i in a) {
+                    sum += a[i] * b[i];
+                }
+                return sum;
+            }
     }
 };
 
