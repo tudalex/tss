@@ -289,6 +289,7 @@ var ETF = function(jobs, entryJob, exitJob, nodes) {
 
 const jobs = tss.availableJobs();
 const unscheduledJobs = jobs.filter(x => !x.node);
+console.log(unscheduledJobs.length);
 unscheduledJobs.forEach(job => {
     const validNodes = tss.validNodes(job);
     const nodes = validNodes;
@@ -297,7 +298,6 @@ unscheduledJobs.forEach(job => {
     //     node: node,
     //     score: tss.dot(node, job)
     // })).sortBy('score').reverse().values();
-    console.log(nodes)
     if (nodes.length > 0) {
         tss.launchJobOnNode(nodes[0], job)
     }

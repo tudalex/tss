@@ -14,6 +14,30 @@ function assert(condition, message, cause) {
     }
 }
 
+class Random {
+    constructor() {
+        this.m_w = 123456789;
+        this.m_z = 987654321;
+        this.mask = 0xffffffff;
+    }
+
+// Takes any integer
+    seed(i) {
+        this.m_w = i;
+        this.m_z = 987654321;
+    }
+
+// Returns number between 0 (inclusive) and 1.0 (exclusive),
+// just like this.random.random().
+    random() {
+        this.m_z = (36969 * (this.m_z & 65535) + (this.m_z >> 16)) & this.mask;
+        this.m_w = (18000 * (this.m_w & 65535) + (this.m_w >> 16)) & this.mask;
+        var result = ((this.m_z << 16) + this.m_w) & this.mask;
+        result /= 4294967296;
+        return result + 0.5;
+    }
+}
+
 
 // Priority queue implementation from http://jsfiddle.net/GRIFFnDOOR/r7tvg/
 // takes an array of objects with {data, priority}
@@ -150,13 +174,14 @@ function Edge(src, dest, cost) {
 
 
 
-function Job(w, id, req, dataNode, arrivalTime) {
+function Job(w, id, req, dataNode, arrivalTime, tss) {
     this.id = id;
     this.w = w;
     this.succ = [];
     this.pred = [];
     this.req = [];
     this.remaining = w;
+    this.tss = tss;
     if (req) {
         this.req = req;
     }
@@ -166,7 +191,7 @@ function Job(w, id, req, dataNode, arrivalTime) {
         this.dataNode = dataNode;
     }
     this.arrivalTime = 0;
-    this.finsihed = false;
+    this.finished = false;
     this.log = [];
     this.reset();
 }
@@ -214,12 +239,17 @@ Job.prototype = {
         this.remaining -= value;
         if (this.log.length > 0 && this.log[0].node.id === this.node.id) {
             this.log[0].time += 1;
+        } else {
+            this.log.push({
+                node: this.node,
+                startTime: tss.time,
+                time: 1,
+            })
         }
-        this.log.push({
-            node: this.node,
-            startTime: tss.time,
-            time: 1,
-        })
+    },
+    done: function () {
+        this.finished = true;
+        this.tss.jobsFinished += 1;
     }
 };
 
@@ -240,7 +270,7 @@ Node.prototype = {
         const newRes = [1, 1, 1];
         this.jobsRunning.forEach((job) => {
             if (job.remaining <= 0) {
-                job.finished = true;
+                job.done();
             } else {
                 for (let i = 0; i < newRes.length; ++i) {
                     newRes[i] -= job.req[i];
@@ -248,7 +278,7 @@ Node.prototype = {
             }
 
         });
-        this.jobsRunning = this.jobsRunning.filter(x => !x.finsihed);
+        this.jobsRunning = this.jobsRunning.filter(x => !x.finished);
         this.res = newRes;
     },
     tick: function () {
@@ -259,6 +289,7 @@ Node.prototype = {
                 job.process(0.9);
             }
         });
+        this.update();
     }
 };
 
@@ -267,7 +298,9 @@ function TSS(nodes) {
     this.jobs = [];
     this.nodes = [];
     this.scheduler = null;
-
+    this.jobsFinished = 0;
+    this.random = new Random();
+    this.random.seed(13);
     var i;
     for (i = 0; i < nodes; ++i) {
         this.nodes.push(new Node(i));
@@ -358,12 +391,25 @@ TSS.prototype = {
     runScheduler: function() {
         this.preRunScheduler();
         var i;
-        for (i = 0; i < 10; ++i) {
+        for (i = 0; i < 1000; ++i) {
             this.time += 1;
             this.nodes.forEach((node) => node.tick());
             this.scheduler(this);
+            let allFinished = true;
+            let j;
+            for (j = 0; j < this.jobs.length; ++j) {
+                if (!this.jobs[j].finished) {
+                    allFinished = false;
+                    break;
+                }
+            }
+            // console.dir(this.jobs[j], {depth: 3, colors: true});
+
+            if (allFinished) {
+                break;
+            }
         }
-        console.log("done");
+        console.log("done", i);
     },
 
 
@@ -379,35 +425,35 @@ TSS.prototype = {
         var i, j, l,
             job;
 
-        function scaleDistribution(x, min, max) {
+        const scaleDistribution = (x, min, max) => {
             return Math.floor(x * (max - min + 1)) + min;
         }
 
-        function getRandomInt(min, max) {
-            return scaleDistribution(Math.random(), min, max);
+        const getRandomInt = (min, max) => {
+            return scaleDistribution(this.random.random(), min, max);
         }
 
-        function getRandomIntExp(min, max) {
-            return scaleDistribution(Math.pow(2, Math.random()) - 1, min, max);
+        const getRandomIntExp = (min, max) => {
+            return scaleDistribution(Math.pow(2, this.random.random()) - 1, min, max);
         }
 
-        function getRandomElement(a) {
+        const getRandomElement = (a) => {
             if (a.length === 0)
                 return null;
             return a[getRandomIntExp(0, a.length - 1)];
         }
 
-        function getRequirements() {
+        const getRequirements = () => {
             return [
-                Math.random(), // cpu
-                Math.random(), // mem
-                Math.random(), // network
+                this.random.random(), // cpu
+                this.random.random(), // mem
+                this.random.random(), // network
             ];
         }
 
         this.jobs = [];
         for (i = 0; i < count; ++i) {
-            job = new Job(getRandomInt(1, 100), i, getRequirements(), getRandomInt(0, this.nodes.length - 1), i * 2);
+            job = new Job(getRandomInt(2, 100), i, getRequirements(), getRandomInt(0, this.nodes.length - 1), i * 2, this);
             l = getRandomInt(1, Math.min(10, this.jobs.length));
             // for (j = 0; j < l; ++j) {
             //     job.addDep(getRandomElement(this.jobs), getRandomInt(1, 10));
@@ -416,7 +462,7 @@ TSS.prototype = {
         }
 
         // Make exit node
-        job = new Job(0, count);
+        // job = new Job(0, count);
         // for (i = 0; i < count; ++i) {
         //     if (this.jobs[i].succ.length == 0)
         //         job.addDep(this.jobs[i], 0);
@@ -576,9 +622,37 @@ TSS.prototype = {
     }
 };
 
+if (typeof require != 'undefined' && require.main === module) {
+    const _ = require("lodash");
+    var tss  = new TSS(2);
+    tss.generateRandomJobs(10);
+    // console.log(tss.jobs);
+    tss.scheduler = function () {
 
+        const jobs = tss.availableJobs();
+        const unscheduledJobs = jobs.filter(x => !x.node);
+        // console.log(unscheduledJobs.length);
+        unscheduledJobs.forEach(job => {
+            const validNodes = tss.validNodes(job);
+            // const nodes = validNodes;
+            // console.log(job, validNodes);
+            const nodes = _(validNodes).map(node => ({
+                node: node,
+                score: tss.dot(node, job)
+            })).sortBy('score').reverse().map(x => x.node).value();
+            // console.log(nodes);
+            if (nodes.length > 0) {
+                tss.launchJobOnNode(nodes[0], job)
+            }
+        })
+    }
 
-
+    tss.reset();
+    tss.run();
+    console.log(tss.computeMakeSpan())
+    console.log(tss.computeFlowTime())
+    // console.dir(tss.jobs, { colors: true, depth: 4});
+}
 
 
 
