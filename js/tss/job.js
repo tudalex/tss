@@ -240,9 +240,9 @@ Job.prototype = {
         if (this.log.length > 0 && this.log[0].node.id === this.node.id) {
             this.log[0].time += 1;
         } else {
-            this.log.push({
+            this.log.unshift({
                 node: this.node,
-                startTime: tss.time,
+                startTime: this.tss.time,
                 time: 1,
             })
         }
@@ -290,6 +290,13 @@ Node.prototype = {
             }
         });
         this.update();
+    },
+    removeJobs: function () {
+        this.jobsRunning.forEach((job) => {
+            job.node = null;
+        })
+        this.jobsRunning = [];
+        this.res = [1, 1, 1];
     }
 };
 
@@ -300,7 +307,7 @@ function TSS(nodes) {
     this.scheduler = null;
     this.jobsFinished = 0;
     this.random = new Random();
-    this.random.seed(13);
+    this.random.seed(14);
     var i;
     for (i = 0; i < nodes; ++i) {
         this.nodes.push(new Node(i));
@@ -323,10 +330,13 @@ TSS.prototype = {
         //     assert(startTime >= djob.finish + cost, 'Job started before deps finished.');
         // }
 
-        console.log("Launching job" + job.id + "on node" + node.id);
+        job.node = node;
+        if (job.log.length === 0 || job.log[0].node.id !== node.id) {
+            // console.log("Launching job", job.id, job.remaining, "on node", node.id, "time", startTime);
+        }
 
         // job.startTime = startTime;
-        job.node = node;
+
         // node.finish = startTime + job.remaining;
         // job.finish = node.finish;
 
@@ -346,7 +356,12 @@ TSS.prototype = {
 
     dot: function (node, job) {
         let sum = 0;
-        for (let i = 0; i < 3; ++i) {
+        if (node.id === job.dataNode) {
+            sum += node.res[0] * job.req[0] * 0.9;
+        } else {
+            sum += node.res[0] * job.req[0];
+        }
+        for (let i = 1; i < 3; ++i) {
             sum += node.res[i] * job.req[i];
         }
         return sum;
@@ -369,10 +384,29 @@ TSS.prototype = {
         }
         return nodes;
     },
+
+    validJobs: function (node) {
+        const availableJobs = this.availableJobs();
+        const jobs = [];
+        var i, j, valid;
+        for (i = 0; i < availableJobs.length; ++i) {
+            valid = true;
+            for (j = 0; j < node.res.length; ++j) {
+                if (node.res[j] < availableJobs[i].req[j]) {
+                    valid = false;
+                    break;
+                }
+            }
+            if (valid) {
+                jobs.push(availableJobs[i]);
+            }
+        }
+        return jobs;
+    },
     
     availableJobs: function () {
         return this.jobs.filter(job => {
-            return job.remaining > 0 && job.arrivalTime < this.time;
+            return job.remaining > 0 && job.arrivalTime < this.time && job.node === null;
         })
     },
 
@@ -391,7 +425,7 @@ TSS.prototype = {
     runScheduler: function() {
         this.preRunScheduler();
         var i;
-        for (i = 0; i < 1000; ++i) {
+        for (i = 0; i < 1000000; ++i) {
             this.time += 1;
             this.nodes.forEach((node) => node.tick());
             this.scheduler(this);
@@ -409,7 +443,7 @@ TSS.prototype = {
                 break;
             }
         }
-        console.log("done", i);
+        // console.log("done", i);
     },
 
 
@@ -623,34 +657,66 @@ TSS.prototype = {
 };
 
 if (typeof require != 'undefined' && require.main === module) {
-    const _ = require("lodash");
-    var tss  = new TSS(2);
-    tss.generateRandomJobs(10);
-    // console.log(tss.jobs);
-    tss.scheduler = function () {
+    function simulate(node,jobs, mode) {
+        const _ = require("lodash");
+        var tss = new TSS(node);
+        tss.generateRandomJobs(jobs);
+        // console.log(tss.jobs);
+        tss.scheduler = function () {
 
-        const jobs = tss.availableJobs();
-        const unscheduledJobs = jobs.filter(x => !x.node);
-        // console.log(unscheduledJobs.length);
-        unscheduledJobs.forEach(job => {
-            const validNodes = tss.validNodes(job);
-            // const nodes = validNodes;
-            // console.log(job, validNodes);
-            const nodes = _(validNodes).map(node => ({
-                node: node,
-                score: tss.dot(node, job)
-            })).sortBy('score').reverse().map(x => x.node).value();
-            // console.log(nodes);
-            if (nodes.length > 0) {
-                tss.launchJobOnNode(nodes[0], job)
-            }
-        })
+            // const jobs = tss.availableJobs();
+            // const unscheduledJobs = _(jobs).filter(x => !x.node);
+            // // console.log(unscheduledJobs.length);
+            // unscheduledJobs.forEach(job => {
+            //     const validNodes = tss.validNodes(job);
+            //     // const nodes = validNodes;
+            //     // console.log(job, validNodes);
+            //     const nodes = _(validNodes).map(node => ({
+            //         node: node,
+            //         score: tss.dot(node, job)
+            //     })).sortBy('score').reverse().map(x => x.node).value();
+            //     // console.log(nodes);
+            //     if (nodes.length > 0) {
+            //         tss.launchJobOnNode(nodes[0], job)
+            //     }
+            // })
+
+            tss.nodes.forEach(node => {
+                // node.removeJobs();
+                const validJobs = tss.validJobs(node);
+                const jobs = _(validJobs).map(job => {
+                    const a = tss.dot(node, job);
+                    const p = job.remaining;
+                    let score = 0;
+                    switch (mode) {
+                        case 0: score = a * p; break;
+                        case 1: score = a; break;
+                        case 2: score = p; break;
+                    }
+                    // console.log(score);
+                    return {
+                        job: job,
+                        score: score,
+                    }
+                }).sortBy('score').reverse().map(x => x.job).value();
+
+                if (jobs.length > 0) {
+                    tss.launchJobOnNode(node, jobs[0]);
+                }
+            })
+        }
+
+        tss.reset();
+        tss.run();
+        return tss.time;
     }
-
-    tss.reset();
-    tss.run();
-    console.log(tss.computeMakeSpan())
-    console.log(tss.computeFlowTime())
+    for (let i = 2; i < 10; ++i) {
+        for (let j = 10; j < 100; j+=10) {
+            for (let k = 0; k < 3; ++k) {
+                console.log(`${i},${j},${k}, ${simulate(i, j,k)}`);
+            }
+        }
+    }
     // console.dir(tss.jobs, { colors: true, depth: 4});
 }
 
